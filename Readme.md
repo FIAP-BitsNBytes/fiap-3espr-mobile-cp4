@@ -34,9 +34,14 @@ Gustavo Bezerra Assumção - **RM 553076**
 - `![Tela de Inscrição](./assets/evidencias/tela-inscricao.png)`
 - `![Calendário Offline](./assets/evidencias/tela-calendario.png)`
 
-### 2. Como Testar
+### 2. Ambiente de testes
 
-* Login: rm123456
+* **No Celular:** Abra o app **Expo Go** e escaneie o QR Code.
+* **No PC:** Pressione `a` para Android ou `i` para iOS (se tiver emulador).
+
+### 3. Credenciais
+
+* Login: RM123456
 * Senha: 123
 
 **Nota:** Esta é uma versão provisória para validação dos endpoints e da interface inicial.
