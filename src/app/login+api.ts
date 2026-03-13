@@ -1,18 +1,23 @@
-export async function POST(request: Request): Promise<Response> {
-  const { email, password } = await request.json();
+export async function POST(request: Request) {
+  try {
+    const { email, password } = await request.json();
 
-  if (email === "gg@gmail.com" && password === "123") {
-    return Response.json({
-      // email,
-      name: "Guss Badass",
-      email: `seu email é: ${email}`
-    })
+    // Validação de segurança básica hardcoded conforme solicitado
+    if (email === "rm123456" && password === "123") {
+      return Response.json(
+        { message: "Acesso autorizado!", email },
+        { status: 200 }
+      );
+    }
+
+    return Response.json(
+      { message: "Usuário e/ou senha incorreta!" },
+      { status: 401 } // 401 = Unauthorized
+    );
+  } catch (error) {
+    return Response.json(
+      { message: "Erro interno no servidor." },
+      { status: 500 }
+    );
   }
-
-  return new Response("Usuário e/ou senha incorreta!", {
-    status: 404,
-    headers: {
-      "Content-Type": "text/plain",
-    },
-  })
 }

@@ -1,36 +1,51 @@
-Aqui está uma versão simplificada e direta para uso imediato:
+# 🏆 Interclasse Digital - FIAP
+
+## 📱 Descrição do Aplicativo
+O **Interclasse Digital** é um aplicativo mobile desenvolvido em React Native para a gestão de torneios desportivos escolares. Ele permite que os alunos visualizem as modalidades disponíveis, acompanhem a tabela de classificação em tempo real e consultem o calendário de jogos (com suporte offline).
+
+Projeto desenvolvido para o Checkpoint de Desenvolvimento Mobile - 2º Semestre.
+
+## 👥 Integrantes do Time
+* **Nome do Integrante 1** - RM: 123456
+* **Nome do Integrante 2** - RM: 654321
+* **Nome do Integrante 3** - RM: 987654
 
 ---
 
-# 🚀 Interclasse Digital - Setup Rápido
-
-### 1. Instalar dependências
-
-No terminal, dentro da pasta do projeto:
-
-```bash
-npm install
-
-```
-
-### 2. Configurar o Servidor (IP)
-
-No arquivo `src/server/api.ts`, altere a `baseURL` para o IP da sua máquina:
-
-* Exemplo: `baseURL: "http://192.168.0.10:8081"`
-
-### 3. Rodar o projeto
-
-```bash
-npx expo start
-
-```
-
-### 4. Como Testar
-
-* **No Celular:** Abra o app **Expo Go** e escaneie o QR Code.
-* **No PC:** Pressione `a` para Android ou `i` para iOS (se tiver emulador).
+## 🚀 Tecnologias e Requisitos Atendidos
+* **Interface e Estilização:** Utilização de `View`, `Text`, `TextInput`, `Pressable`, `FlatList` e `StyleSheet`.
+* **Navegação:** Expo Router (File-based routing).
+* **Integração com API (Axios):**
+  * 1 API GET (`/classificacao` / `/modalidades`)
+  * 2 APIs POST (`/login` / `/inscricao`)
+* **Persistência de Dados (AsyncStorage):** Calendário de jogos salvo localmente para acesso offline.
 
 ---
 
-**Nota:** Esta é uma versão provisória para validação dos endpoints e da interface inicial.
+## 📸 Evidências de Teste (APIs e App)
+
+> **Nota:** As imagens abaixo comprovam o funcionamento dos endpoints isolados via Thunder Client/Postman e a interface do aplicativo.
+
+### 1. Telas do Aplicativo
+*(Coloque aqui as imagens/prints do app rodando no celular ou emulador)*
+- `![Tela Inicial](./assets/evidencias/tela-inicial.png)`
+- `![Tela de Inscrição](./assets/evidencias/tela-inscricao.png)`
+- `![Calendário Offline](./assets/evidencias/tela-calendario.png)`
+
+### 2. Testes de API (Postman / Thunder Client)
+*(Coloque aqui os prints das requisições)*
+- **GET - Classificação:** `![Teste GET Classificação](./assets/evidencias/teste-get-classificacao.png)`
+- **POST - Inscrição:** `![Teste POST Inscrição](./assets/evidencias/teste-post-inscricao.png)`
+
+---
+
+## 🎥 Vídeo de Apresentação
+🔗 **[Clique aqui para assistir ao vídeo do projeto no YouTube/Drive](#)**
+
+---
+
+## 🛠️ Como rodar o projeto
+1. Clone o repositório.
+2. Instale as dependências com `npm install`.
+3. Altere o IP na `baseURL` dentro de `src/server/api.ts` para o IP da sua máquina.
+4. Execute `npx expo start`.
