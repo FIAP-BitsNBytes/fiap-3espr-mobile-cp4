@@ -32,20 +32,21 @@ Projeto desenvolvido para o Checkpoint de Desenvolvimento Mobile - 2º Semestre.
 - `![Tela de Inscrição](./assets/evidencias/tela-inscricao.png)`
 - `![Calendário Offline](./assets/evidencias/tela-calendario.png)`
 
-### 2. Testes de API (Postman / Thunder Client)
-*(Coloque aqui os prints das requisições)*
-- **GET - Classificação:** `![Teste GET Classificação](./assets/evidencias/teste-get-classificacao.png)`
-- **POST - Inscrição:** `![Teste POST Inscrição](./assets/evidencias/teste-post-inscricao.png)`
+### 4. Como Testar
+
+* **No Celular:** Abra o app **Expo Go** e escaneie o QR Code.
+* **No PC:** Pressione `a` para Android ou `i` para iOS (se tiver emulador).
 
 ---
 
-## 🎥 Vídeo de Apresentação
-🔗 **[Clique aqui para assistir ao vídeo do projeto no YouTube/Drive](#)**
+### 5. Integrantes
+
+Gabriel Mediotti Marques - **RM 552632**
+Jó Sales - **RM 552679**
+Miguel Garcez de Carvalho - **RM 553768**
+Vinicius Souza e Silva - **RM 552781**
+Gustavo Bezerra Assumção - **RM 553076**
 
 ---
 
-## 🛠️ Como rodar o projeto
-1. Clone o repositório.
-2. Instale as dependências com `npm install`.
-3. Altere o IP na `baseURL` dentro de `src/server/api.ts` para o IP da sua máquina.
-4. Execute `npx expo start`.
+**Nota:** Esta é uma versão provisória para validação dos endpoints e da interface inicial.
