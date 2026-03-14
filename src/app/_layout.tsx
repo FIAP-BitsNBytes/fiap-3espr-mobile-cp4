@@ -92,14 +92,22 @@ export default function AppLayout() {
         }}
       />
 
-      {/* 6. TELA INTERNA: INSCRIÇÃO */}
+      {/* 6. MENU: PERFIL */}
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color }) => <MaterialIcons name="account-circle" size={24} color={color} />,
+        }}
+      />
+
+      {/* 7. TELA INTERNA: INSCRIÇÃO */}
       <Tabs.Screen
         name="inscricao"
         options={{
-          href: null, 
+          href: null,
           title: "Nova Inscrição",
-          // Na tela interna, podemos tirar o botão de sair para focar no formulário (opcional)
-          headerRight: () => null 
+          headerRight: () => null
         }}
       />
     </Tabs>
