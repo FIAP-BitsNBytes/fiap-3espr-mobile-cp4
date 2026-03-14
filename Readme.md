@@ -361,10 +361,10 @@ As rotas ficam disponíveis na porta `8081` enquanto o `npx expo start` estiver 
 
 #### Tela de Perfil
 
-![Tela de Perfil](assets/images/perfil-user.jpeg)
+![alt text](image.png)
 
 *(Adicione prints das demais telas aqui)*
 
 ### Video de demonstracao
 
-*(Adicione o link do video aqui)*
+(https://drive.google.com/file/d/1Z56nQgvkGfJ_P5OTMiIDr3HVFI4-SPFS/view?usp=drive_link)
