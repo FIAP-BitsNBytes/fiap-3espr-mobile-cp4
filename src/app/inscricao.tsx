@@ -1,123 +1,262 @@
 import { useState } from "react";
-import { View, Text, TextInput, StyleSheet, Pressable, Alert, ActivityIndicator } from "react-native";
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  StyleSheet, 
+  Pressable, 
+  Alert, 
+  ActivityIndicator, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView 
+} from "react-native";
 import { api } from "@/server/api";
-import { isAxiosError } from "axios";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams, router, Stack } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
-interface InscricaoResponse { message: string; }
+interface Integrante {
+  nome: string;
+  rm: string;
+}
 
 export default function Inscricao() {
   const { modalidadeSelecionada } = useLocalSearchParams(); 
+  const modalidade = typeof modalidadeSelecionada === 'string' ? modalidadeSelecionada : "Esporte";
 
-  const [matricula, setMatricula] = useState("");
-  const [matriculaError, setMatriculaError] = useState<string | null>(null);
+  const [nomeMembro, setNomeMembro] = useState("");
+  const [rmMembro, setRmMembro] = useState("");
+  const [listaIntegrantes, setListaIntegrantes] = useState<Integrante[]>([]);
   const [carregando, setCarregando] = useState(false);
 
-  const modalidade = typeof modalidadeSelecionada === 'string' ? modalidadeSelecionada : "Esporte não selecionado";
+  const obterMinimoIntegrantes = () => {
+    const mod = modalidade.toLowerCase();
+    if (mod.includes("futsal") || mod.includes("basquete")) return 10;
+    if (mod.includes("vôlei") || mod.includes("volei")) return 12;
+    return 0;
+  };
 
-  function handleMatriculaChange(texto: string) {
-    const apenasNumeros = texto.replace(/[^0-9]/g, '');
-    setMatricula(apenasNumeros);
-    if (apenasNumeros.length < 5) setMatriculaError("O RM deve ter pelo menos 5 dígitos.");
-    else setMatriculaError(null);
+  const minIntegrantes = obterMinimoIntegrantes();
+
+  function handleAdicionarMembro() {
+    if (nomeMembro.trim().length < 3 || rmMembro.length < 5) {
+      Alert.alert("Erro", "Preencha o nome e o RM (mínimo 5 dígitos) corretamente.");
+      return;
+    }
+    setListaIntegrantes([...listaIntegrantes, { nome: nomeMembro, rm: rmMembro }]);
+    setNomeMembro("");
+    setRmMembro("");
   }
 
-  async function handleEnviarInscricao() {
-    if (!matricula || matriculaError) {
-      Alert.alert("Atenção", "Preencha o seu RM corretamente.");
-      return; 
+  function removerMembro(index: number) {
+    const novaLista = [...listaIntegrantes];
+    novaLista.splice(index, 1);
+    setListaIntegrantes(novaLista);
+  }
+
+  async function handleConfirmarInscricao() {
+    if (listaIntegrantes.length < minIntegrantes) {
+      Alert.alert("Time Incompleto", `Para ${modalidade}, são necessários no mínimo ${minIntegrantes} atletas.`);
+      return;
     }
 
     setCarregando(true);
-
     try {
-      // 1. Mantemos a chamada à API para garantir os pontos do CP (Cumprir a regra de ter POST)
-      const response = await api.post<InscricaoResponse>("/inscricao", { matricula, modalidade });
+      await api.post("/inscricao-time", { modalidade, integrantes: listaIntegrantes });
       
-      // 2. LÓGICA SÊNIOR: Atualizar o Perfil Pessoal
-      const perfilSalvo = await AsyncStorage.getItem("@interclasse_perfil");
-      const perfilObj = perfilSalvo ? JSON.parse(perfilSalvo) : { nome: "Estudante Fiap" }; 
-      perfilObj.modalidade = modalidade; 
-      perfilObj.rm = matricula; 
-      await AsyncStorage.setItem("@interclasse_perfil", JSON.stringify(perfilObj));
-
-      // 3. A MÁGICA DO RANKING LOCAL: Salvar na lista global do AsyncStorage
       const listaSalva = await AsyncStorage.getItem("@interclasse_lista_inscricoes");
-      let arrayInscricoes = listaSalva ? JSON.parse(listaSalva) : [];
+      let ranking = listaSalva ? JSON.parse(listaSalva) : [];
+      ranking.push({
+        id: `time-${listaIntegrantes[0].rm}-${Date.now()}`,
+        nome: `Time ${modalidade} (Líder: ${listaIntegrantes[0].nome})`,
+        pontos: 100 
+      });
+      await AsyncStorage.setItem("@interclasse_lista_inscricoes", JSON.stringify(ranking));
 
-      const novoInscrito = {
-        id: matricula,
-        nome: `RM ${matricula} (${modalidade})`,
-        pontos: 100 // Apenas visual, já que a ordem é de chegada
-      };
-
-      // Previne que o mesmo RM se inscreva duas vezes e encha o ranking
-      const indexExistente = arrayInscricoes.findIndex((item: any) => item.id === matricula);
-      if (indexExistente >= 0) {
-        arrayInscricoes[indexExistente] = novoInscrito; // Atualiza a modalidade se mudou
-      } else {
-        arrayInscricoes.push(novoInscrito); // Adiciona no fim (Ordem de chegada)
-      }
-
-      await AsyncStorage.setItem("@interclasse_lista_inscricoes", JSON.stringify(arrayInscricoes));
-
-      Alert.alert("Sucesso!", response.data?.message || "Inscrição guardada localmente.", [
-        { text: "OK", onPress: () => router.back() } 
+      Alert.alert("Sucesso!", "Inscrição realizada com sucesso!", [
+        { text: "Ver Modalidades", onPress: () => router.replace("/modalidades") }
       ]);
-      
     } catch (error) {
-      if (isAxiosError<InscricaoResponse>(error)) {
-        Alert.alert("Erro", error.response?.data?.message || "Erro de conexão.");
-      } else {
-        Alert.alert("Erro", "Ocorreu um erro inesperado.");
-      }
+      Alert.alert("Erro", "Não foi possível realizar a inscrição.");
     } finally {
       setCarregando(false);
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>Confirmação de Inscrição</Text>
-      <View style={styles.cardResumo}>
-        <Text style={styles.labelResumo}>Modalidade Escolhida:</Text>
-        <Text style={styles.destaqueModalidade}>{modalidade}</Text>
-      </View>
-      <Text style={styles.label}>Confirme o seu RM para validar:</Text>
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={[styles.input, matriculaError ? styles.inputError : null]}
-          placeholder="Digite apenas números (Ex: 12345)"
-          keyboardType="numeric"
-          value={matricula}
-          onChangeText={handleMatriculaChange}
-          maxLength={10}
-        />
-        {matriculaError && <Text style={styles.errorText}>{matriculaError}</Text>}
-      </View>
-      <Pressable 
-        style={({ pressed }) => [ styles.botao, (carregando || !matricula || matriculaError !== null) && { opacity: 0.5 }, pressed && { opacity: 0.8 } ]}
-        onPress={handleEnviarInscricao}
-        disabled={carregando || !matricula || matriculaError !== null}
-      >
-        {carregando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.textoBotao}>Confirmar Participação</Text>}
-      </Pressable>
-    </View>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
+      <Stack.Screen options={{ title: "Inscrição", headerStyle: { backgroundColor: "#0a27e2" }, headerTintColor: "#FFF" }} />
+      
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerCorpo}>
+          <Text style={styles.overtitle}>ETAPA DE CADASTRO</Text>
+          <Text style={styles.titulo}>{modalidade.toUpperCase()}</Text>
+          <View style={styles.divisor} />
+        </View>
+
+        {/* Card Informativo */}
+        <LinearGradient colors={['#1a1a1a', '#0a1661']} style={styles.cardInfo}>
+          <MaterialIcons name="info-outline" size={20} color="#0a27e2" />
+          <Text style={styles.textoInfo}>
+            {minIntegrantes > 0 
+              ? `Necessário mínimo de ${minIntegrantes} integrantes para validar o time.`
+              : "Esta modalidade permite inscrição individual ou em grupo."}
+          </Text>
+        </LinearGradient>
+
+        {/* Formulário */}
+        <View style={styles.formAdicionar}>
+          <Text style={styles.labelSecao}>ADICIONAR ATLETA</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Nome Completo"
+            placeholderTextColor="#666"
+            value={nomeMembro}
+            onChangeText={setNomeMembro}
+          />
+          <TextInput
+            style={[styles.input, { marginTop: 12 }]}
+            placeholder="RM do Aluno"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={rmMembro}
+            onChangeText={(t) => setRmMembro(t.replace(/[^0-9]/g, ""))}
+            maxLength={10}
+          />
+          <Pressable style={styles.botaoAdicionar} onPress={handleAdicionarMembro}>
+            <MaterialIcons name="person-add" size={20} color="#FFF" />
+            <Text style={styles.textoBotaoAdicionar}>Adicionar na Lista</Text>
+          </Pressable>
+        </View>
+
+        {/* Listagem */}
+        <View style={styles.secaoLista}>
+          <View style={styles.listaHeader}>
+            <Text style={styles.labelSecao}>ATLETAS INSCRITOS</Text>
+            <View style={styles.badgeContagem}>
+              <Text style={styles.textoBadge}>{listaIntegrantes.length}</Text>
+            </View>
+          </View>
+          
+          {listaIntegrantes.map((item, index) => (
+            <View key={index} style={styles.itemMembro}>
+              <View>
+                <Text style={styles.textoMembroNome}>{item.nome}</Text>
+                <Text style={styles.textoMembroRM}>RM {item.rm}</Text>
+              </View>
+              <Pressable onPress={() => removerMembro(index)} style={styles.botaoRemover}>
+                <MaterialIcons name="delete-outline" size={22} color="#ff4444" />
+              </Pressable>
+            </View>
+          ))}
+
+          {listaIntegrantes.length === 0 && (
+            <Text style={styles.listaVazia}>Nenhum integrante na lista ainda.</Text>
+          )}
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Pressable 
+            style={[styles.botaoConfirmar, (carregando || (minIntegrantes > 0 && listaIntegrantes.length < minIntegrantes)) && styles.botaoDesabilitado]}
+            onPress={handleConfirmarInscricao}
+            disabled={carregando || (minIntegrantes > 0 && listaIntegrantes.length < minIntegrantes)}
+          >
+            {carregando ? <ActivityIndicator color="#FFF" /> : (
+              <>
+                <Text style={styles.textoBotaoConfirmar}>FINALIZAR TIME</Text>
+                <MaterialIcons name="check-circle" size={20} color="#FFF" />
+              </>
+            )}
+          </Pressable>
+
+          <Pressable onPress={() => router.back()} style={styles.botaoCancelar}>
+            <Text style={styles.textoBotaoCancelar}>Cancelar e voltar</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: "#F5F5F5", justifyContent: "center" },
-  titulo: { fontSize: 24, fontWeight: "bold", color: "#333", textAlign: "center", marginBottom: 30 },
-  cardResumo: { backgroundColor: "#E6E9FA", padding: 20, borderRadius: 12, marginBottom: 30, alignItems: "center", borderWidth: 1, borderColor: "#0a27e2" },
-  labelResumo: { fontSize: 16, color: "#555", marginBottom: 8 },
-  destaqueModalidade: { fontSize: 22, fontWeight: "bold", color: "#0a27e2" },
-  label: { fontSize: 16, fontWeight: "600", color: "#444", marginBottom: 10 },
-  inputContainer: { width: "100%", marginBottom: 20 },
-  input: { backgroundColor: "#FFF", borderWidth: 1, borderColor: "#DDD", borderRadius: 8, padding: 16, fontSize: 18 },
-  inputError: { borderColor: "#e20a27", borderWidth: 2 },
-  errorText: { color: "#e20a27", fontSize: 12, marginTop: 4, marginLeft: 4, fontWeight: "500" },
-  botao: { backgroundColor: "#0a27e2", padding: 18, borderRadius: 8, alignItems: "center", marginTop: 10 },
-  textoBotao: { color: "#FFF", fontSize: 18, fontWeight: "bold" },
+  container: { flex: 1, backgroundColor: "#121212" },
+  scrollContainer: { paddingHorizontal: 24, paddingBottom: 40 },
+  headerCorpo: { paddingTop: 30, marginBottom: 20 },
+  overtitle: { color: "#0a27e2", fontWeight: "800", fontSize: 12, letterSpacing: 2 },
+  titulo: { fontSize: 32, fontWeight: "900", color: "#FFF", marginTop: 5 },
+  divisor: { width: 50, height: 4, backgroundColor: "#0a27e2", marginTop: 10, borderRadius: 2 },
+  
+  cardInfo: { 
+    flexDirection: "row", 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: "center", 
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "rgba(10, 39, 226, 0.3)",
+    marginBottom: 24
+  },
+  textoInfo: { color: "#BBB", fontSize: 13, flex: 1, lineHeight: 18 },
+
+  formAdicionar: { backgroundColor: "#1a1a1a", padding: 20, borderRadius: 16, marginBottom: 24 },
+  labelSecao: { color: "#FFF", fontSize: 14, fontWeight: "800", marginBottom: 16, letterSpacing: 1 },
+  input: { 
+    backgroundColor: "#222", 
+    color: "#FFF", 
+    padding: 16, 
+    borderRadius: 10, 
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#333"
+  },
+  botaoAdicionar: { 
+    backgroundColor: "#27ae60", 
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 14, 
+    borderRadius: 10, 
+    marginTop: 16,
+    gap: 8
+  },
+  textoBotaoAdicionar: { color: "#FFF", fontWeight: "bold", fontSize: 15 },
+
+  secaoLista: { marginBottom: 30 },
+  listaHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 15 },
+  badgeContagem: { backgroundColor: "#0a27e2", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
+  textoBadge: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
+  
+  itemMembro: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center",
+    backgroundColor: "#1a1a1a", 
+    padding: 16, 
+    borderRadius: 10, 
+    marginBottom: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: "#0a27e2"
+  },
+  textoMembroNome: { color: "#FFF", fontSize: 16, fontWeight: "600" },
+  textoMembroRM: { color: "#666", fontSize: 13, marginTop: 2 },
+  botaoRemover: { padding: 4 },
+  listaVazia: { textAlign: "center", color: "#444", marginTop: 20, fontStyle: "italic" },
+
+  footer: { marginTop: 10 },
+  botaoConfirmar: { 
+    backgroundColor: "#0a27e2", 
+    padding: 20, 
+    borderRadius: 14, 
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10
+  },
+  botaoDesabilitado: { opacity: 0.5, backgroundColor: "#333" },
+  textoBotaoConfirmar: { color: "#FFF", fontWeight: "900", fontSize: 16 },
+  botaoCancelar: { padding: 20, alignItems: "center" },
+  textoBotaoCancelar: { color: "#666", fontSize: 14, fontWeight: "600" }
 });

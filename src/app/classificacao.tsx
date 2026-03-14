@@ -1,7 +1,18 @@
 import { useState, useCallback } from "react";
-import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator, RefreshControl } from "react-native";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  Alert, 
+  ActivityIndicator, 
+  RefreshControl,
+  Platform 
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, Stack } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 export interface Inscrito { id: string; nome: string; pontos: number; }
 
@@ -15,45 +26,61 @@ export default function Classificacao() {
     if (isPullToRefresh) setAtualizando(true);
 
     try {
-      // 1. Sabe quem é o utilizador logado para pintar a linha de azul
       const perfilLocal = await AsyncStorage.getItem("@interclasse_perfil");
       if (perfilLocal) {
+        // Buscamos o RM para destacar a linha do usuário
         setMeuRM(JSON.parse(perfilLocal).rm);
       }
 
-      // 2. Lê a "Base de Dados" local inteira
       const listaSalva = await AsyncStorage.getItem("@interclasse_lista_inscricoes");
       
       if (listaSalva) {
         const arrayCompleto = JSON.parse(listaSalva);
-        
-        // 3. Lógica do Sênior: Limita a APENAS OS 10 PRIMEIROS (Ordem de chegada)
+        // Exibimos os 10 primeiros por ordem de inscrição/chegada
         const top10 = arrayCompleto.slice(0, 10);
         setLista(top10);
       } else {
-        setLista([]); // Se não houver nada, lista vazia
+        setLista([]);
       }
 
     } catch (error) {
-      console.error("Erro ao carregar ranking do AsyncStorage:", error);
-      Alert.alert("Erro", "Falha ao ler os dados do telemóvel.");
+      Alert.alert("Erro", "Falha ao ler os dados locais.");
     } finally {
       setCarregando(false);
       setAtualizando(false);
     }
   }
 
-  // O useFocusEffect garante que a tela atualiza mal tu pises nela
   useFocusEffect(
     useCallback(() => {
       carregarDadosDoAsyncStorage();
     }, [])
   );
 
+  // Função para definir a cor do ícone de troféu com base na posição
+  const getCorTrofeu = (index: number) => {
+    if (index === 0) return "#FFD700"; // Ouro
+    if (index === 1) return "#C0C0C0"; // Prata
+    if (index === 2) return "#CD7F32"; // Bronze
+    return "#444";
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Últimos 10 Inscritos</Text>
-      <Text style={styles.subtitulo}>(Armazenamento Local - AsyncStorage)</Text>
+      <Stack.Screen 
+        options={{ 
+          title: "Classificação", 
+          headerStyle: { backgroundColor: "#0a27e2" }, 
+          headerTintColor: "#FFF",
+          headerTitleAlign: "center"
+        }} 
+      />
+
+      <View style={styles.headerCorpo}>
+        <Text style={styles.overtitle}>TOP 10 INSCRITOS</Text>
+        <Text style={styles.titulo}>RANKING <Text style={styles.tituloDestaque}>LÍDERES</Text></Text>
+        <View style={styles.divisor} />
+      </View>
 
       {carregando ? (
         <ActivityIndicator size="large" color="#0a27e2" style={styles.loader} />
@@ -61,25 +88,60 @@ export default function Classificacao() {
         <FlatList
           data={lista}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.lista}
           showsVerticalScrollIndicator={false}
-          refreshControl={ <RefreshControl refreshing={atualizando} onRefresh={() => carregarDadosDoAsyncStorage(true)} colors={["#0a27e2"]} /> }
+          refreshControl={ 
+            <RefreshControl 
+                refreshing={atualizando} 
+                onRefresh={() => carregarDadosDoAsyncStorage(true)} 
+                tintColor="#0a27e2"
+                colors={["#0a27e2"]} 
+            /> 
+          }
           renderItem={({ item, index }) => {
-            
-            // Destaque visual se o item da lista for o utilizador atual
-            const isMinhaEquipa = meuRM === item.id;
+            // O ID no seu mock contém o RM do primeiro integrante
+            const isMinhaEquipa = meuRM && item.id.includes(meuRM);
 
             return (
               <View style={[styles.card, isMinhaEquipa && styles.cardDestaque]}>
-                <View style={[styles.posicaoContainer, isMinhaEquipa && styles.posicaoContainerDestaque]}>
-                  <Text style={[styles.posicao, isMinhaEquipa && styles.posicaoDestaque]}>{index + 1}º</Text>
+                <View style={styles.posicaoWrapper}>
+                  <Text style={[styles.posicaoTexto, index < 3 && styles.posicaoTop]}>
+                    {index + 1}
+                  </Text>
+                  <MaterialIcons 
+                    name="emoji-events" 
+                    size={20} 
+                    color={getCorTrofeu(index)} 
+                  />
                 </View>
-                <Text style={[styles.nomeTurma, isMinhaEquipa && styles.textoDestaque]}>
-                  {item.nome}
-                </Text>
+
+                <View style={styles.infoEquipa}>
+                  <Text 
+                    style={[styles.nomeTurma, isMinhaEquipa && styles.textoDestaque]}
+                    numberOfLines={1}
+                  >
+                    {item.nome}
+                  </Text>
+                  <Text style={styles.idSubtexto}>REF: {item.id.split('-')[1] || 'ID'}</Text>
+                </View>
+
+                {isMinhaEquipa && (
+                  <LinearGradient
+                    colors={['#0a27e2', '#061a9c']}
+                    style={styles.badgeVoce}
+                  >
+                    <Text style={styles.textoBadgeVoce}>VOCÊ</Text>
+                  </LinearGradient>
+                )}
               </View>
             );
           }}
-          ListEmptyComponent={<Text style={styles.avisoVazio}>Ainda não há inscritos salvos no telemóvel.</Text>}
+          ListEmptyComponent={
+            <View style={styles.vazioContainer}>
+              <MaterialIcons name="storage" size={50} color="#333" />
+              <Text style={styles.avisoVazio}>Ainda não há inscritos locais.</Text>
+            </View>
+          }
         />
       )}
     </View>
@@ -87,17 +149,75 @@ export default function Classificacao() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: "#F5F5F5" },
-  titulo: { fontSize: 20, fontWeight: "bold", color: "#333", textAlign: "center" },
-  subtitulo: { fontSize: 12, color: "#888", textAlign: "center", marginBottom: 16 },
-  loader: { marginTop: 50 },
-  card: { flexDirection: "row", backgroundColor: "#FFF", padding: 16, marginBottom: 10, borderRadius: 8, alignItems: "center", justifyContent: "space-between", elevation: 2, borderWidth: 1, borderColor: "transparent" },
-  posicaoContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#E6E9FA", justifyContent: "center", alignItems: "center", marginRight: 12 },
-  posicao: { fontSize: 18, fontWeight: "bold", color: "#0a27e2" },
-  nomeTurma: { fontSize: 16, fontWeight: "600", flex: 1, color: "#444" },
-  cardDestaque: { borderColor: "#0a27e2", borderWidth: 2, backgroundColor: "#F0F4FF" },
-  posicaoContainerDestaque: { backgroundColor: "#0a27e2" },
-  posicaoDestaque: { color: "#FFF" },
-  textoDestaque: { color: "#0a27e2", fontWeight: "bold" },
-  avisoVazio: { textAlign: "center", marginTop: 40, fontSize: 16, color: "#666" }
+  container: { flex: 1, backgroundColor: "#121212" },
+  headerCorpo: { paddingHorizontal: 24, paddingTop: 20, marginBottom: 10 },
+  overtitle: { color: "#0a27e2", fontWeight: "800", fontSize: 12, letterSpacing: 2 },
+  titulo: { fontSize: 32, fontWeight: "900", color: "#FFF", marginTop: 5 },
+  tituloDestaque: { color: "#0a27e2" },
+  divisor: { width: 50, height: 4, backgroundColor: "#0a27e2", marginTop: 10, borderRadius: 2 },
+  
+  loader: { flex: 1, justifyContent: "center" },
+  lista: { padding: 20, paddingBottom: 40 },
+  
+  card: { 
+    flexDirection: "row", 
+    backgroundColor: "#1a1a1a", 
+    padding: 16, 
+    marginBottom: 12, 
+    borderRadius: 16, 
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)"
+  },
+  cardDestaque: { 
+    borderColor: "#0a27e2", 
+    borderWidth: 1.5,
+    backgroundColor: "#1a1e3a" // Um azul bem escuro para diferenciar
+  },
+  
+  posicaoWrapper: { 
+    alignItems: "center", 
+    justifyContent: "center", 
+    width: 45,
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    marginRight: 15
+  },
+  posicaoTexto: { 
+    color: "#666", 
+    fontSize: 18, 
+    fontWeight: "900" 
+  },
+  posicaoTop: {
+    color: "#FFF",
+  },
+
+  infoEquipa: { flex: 1 },
+  nomeTurma: { 
+    fontSize: 15, 
+    fontWeight: "700", 
+    color: "#FFF",
+    marginBottom: 2
+  },
+  idSubtexto: {
+    fontSize: 11,
+    color: "#555",
+    fontWeight: "600"
+  },
+  textoDestaque: { color: "#0a27e2" },
+
+  badgeVoce: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 10
+  },
+  textoBadgeVoce: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "900"
+  },
+
+  vazioContainer: { alignItems: "center", marginTop: 60, opacity: 0.3 },
+  avisoVazio: { textAlign: "center", marginTop: 15, fontSize: 14, color: "#666", fontWeight: "600" }
 });
